@@ -1,12 +1,18 @@
-# pkt-threejs-blueprint
+# @1337exp/pkt-threejs-blueprint
 
 **English** · [Русский](README.ru.md)
 
-The small shared layer our Three.js prototypes keep rewriting: a game clock with tweens, springs that do not blow up, seeded random, and the core of a "tweak it live" panel. Import only what you need; nothing is pulled in that you did not ask for. Working name, not published yet.
+The small shared layer our Three.js prototypes keep rewriting: a game clock with tweens, springs that do not blow up, seeded random, and the core of a "tweak it live" panel. Import only what you need; nothing is pulled in that you did not ask for.
 
 ## Stack
 
-TypeScript 6, Vitest, plain `tsc` (no bundler: one file per module is the tree-shaking). The core has no dependencies and no DOM. `three` is an optional peer, used only by the `three/` layer that comes next. It does not depend on TaoUI or TaoUX.
+TypeScript 6, Vitest, plain `tsc` (no bundler: one file per module is the tree-shaking). The core has no dependencies and no DOM. `three` is an optional peer, used only by the modules that say so in the table; `vue` is an optional peer of the panel. It does not depend on TaoUI or TaoUX.
+
+```bash
+npm install @1337exp/pkt-threejs-blueprint   # plus three and vue if you use the modules that need them
+```
+
+Work on the library itself:
 
 ```bash
 npm install
@@ -17,7 +23,7 @@ npm run build
 
 ## What it can do
 
-Each module is its own import (`pkt-threejs-blueprint/<module>`), there is no root entry.
+Each module is its own import (`@1337exp/pkt-threejs-blueprint/<module>`), there is no root entry.
 
 | Module | What |
 |---|---|
@@ -33,8 +39,8 @@ Each module is its own import (`pkt-threejs-blueprint/<module>`), there is no ro
 | `dispose` | needs `three`. `disposeObject(root, { textures })`: geometries and materials (arrays too) freed once however many meshes share them; textures only when asked |
 
 ```ts
-import { Ticker } from 'pkt-threejs-blueprint/ticker';
-import { easeOutBack } from 'pkt-threejs-blueprint/ease';
+import { Ticker } from '@1337exp/pkt-threejs-blueprint/ticker';
+import { easeOutBack } from '@1337exp/pkt-threejs-blueprint/ease';
 
 const ticker = new Ticker();
 // every frame: ticker.update(Math.min(realDt, maxDt));

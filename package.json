@@ -1,7 +1,6 @@
 {
-  "name": "pkt-threejs-blueprint",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@1337exp/pkt-threejs-blueprint",
+  "version": "0.1.0",
   "description": "The small shared layer our Three.js prototypes keep rewriting: game clock and tweens, springs, seeded random, live-tuning core. Import only what you need.",
   "keywords": [
     "threejs",
@@ -13,9 +12,18 @@
   ],
   "type": "module",
   "license": "MIT",
+  "homepage": "https://github.com/1337exp/pkt-threejs-blueprint#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1337exp/pkt-threejs-blueprint.git"
+  },
+  "bugs": {
+    "url": "https://github.com/1337exp/pkt-threejs-blueprint/issues"
+  },
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "CHANGELOG.md"
   ],
   "exports": {
     "./ease": {
@@ -91,5 +99,8 @@
   "author": "1337exp",
   "engines": {
     "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

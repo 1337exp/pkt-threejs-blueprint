@@ -1,12 +1,18 @@
-# pkt-threejs-blueprint
+# @1337exp/pkt-threejs-blueprint
 
 [English](README.md) · **Русский**
 
-Небольшой общий слой, который наши прототипы на Three.js постоянно пишут заново: игровое время с твинами, пружины, которые не разлетаются, случайные числа с зерном и ядро панели «покрутить вживую». Подключай только то, что нужно; лишнего не тянется. Рабочее имя, пока не опубликовано.
+Небольшой общий слой, который наши прототипы на Three.js постоянно пишут заново: игровое время с твинами, пружины, которые не разлетаются, случайные числа с зерном и ядро панели «покрутить вживую». Подключай только то, что нужно; лишнего не тянется.
 
 ## Стек
 
-TypeScript 6, Vitest, обычный `tsc` (без бандлера: по файлу на модуль и есть tree-shaking). Ядро без зависимостей и без DOM. `three` необязательный peer, он нужен только слою `three/`, который будет следом. От TaoUI и TaoUX не зависит.
+TypeScript 6, Vitest, обычный `tsc` (без бандлера: по файлу на модуль и есть tree-shaking). Ядро без зависимостей и без DOM. `three` необязательный peer, он нужен только модулям, у которых это сказано в таблице; `vue` необязательный peer панели. От TaoUI и TaoUX не зависит.
+
+```bash
+npm install @1337exp/pkt-threejs-blueprint   # плюс three и vue, если берёшь модули, которым они нужны
+```
+
+Работа над самой библиотекой:
 
 ```bash
 npm install
@@ -17,7 +23,7 @@ npm run build
 
 ## Что умеет
 
-Каждый модуль подключается отдельно (`pkt-threejs-blueprint/<модуль>`), общего входа нет.
+Каждый модуль подключается отдельно (`@1337exp/pkt-threejs-blueprint/<модуль>`), общего входа нет.
 
 | Модуль | Что |
 |---|---|
@@ -33,8 +39,8 @@ npm run build
 | `dispose` | нужен `three`. `disposeObject(root, { textures })`: геометрии и материалы (и массивы) освобождаются один раз, сколько бы мешей их ни делило; текстуры только по просьбе |
 
 ```ts
-import { Ticker } from 'pkt-threejs-blueprint/ticker';
-import { easeOutBack } from 'pkt-threejs-blueprint/ease';
+import { Ticker } from '@1337exp/pkt-threejs-blueprint/ticker';
+import { easeOutBack } from '@1337exp/pkt-threejs-blueprint/ease';
 
 const ticker = new Ticker();
 // каждый кадр: ticker.update(Math.min(realDt, maxDt));
