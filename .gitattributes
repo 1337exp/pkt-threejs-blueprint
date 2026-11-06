@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Media is binary: never touch line endings, never diff as text
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.gif  binary
+*.mp4  binary
+*.webm binary

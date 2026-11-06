@@ -1,0 +1,10 @@
+{
+    // The core has no DOM and no Node: if it type-checks here, it runs anywhere.
+    // Ядро без DOM и без Node: если проходит здесь, то работает где угодно.
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "lib": ["ES2022"],
+        "types": []
+    },
+    "include": ["src/core/**/*.ts"]
+}
