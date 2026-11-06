@@ -23,7 +23,7 @@ Each module is its own import (`pkt-threejs-blueprint/<module>`), there is no ro
 |---|---|
 | `ease` | `Ease = (t) => number`, our curves (`easeOutBack` overshoots), `smoothstep(edge0, edge1, x)` in GLSL argument order |
 | `ticker` | `Ticker`: game time with a `speed` (0 is a hit-stop), `tween` and `wait` as promises, `add`, `busy`, `clear` |
-| `spring` | `spring(stiffness, zeta)`, `stepSpring` (a number) and `stepSpring3` (a vector), `springMaxDt` |
+| `spring` | `spring(stiffness, zeta)`, `stepSpring` (a number) and `stepSpring3` (a vector): the exact solution, stable at any step, the same path at any frame rate |
 | `rng` | `mulberry32(seed)`, `randomInt`; the sequence is frozen by a test, saved seeds stay valid |
 | `tuning` | `createTuning(values, { groups, storageKey })`: live values, saving only the differences from the defaults, reset, "copy as code" (`toSource`), safe `localStorage` |
 
@@ -40,7 +40,7 @@ await ticker.tween(0.4, (k) => (mesh.scale.x = 1 + k), easeOutBack);
 
 `dt` is the time between two frames in seconds, not a simulation rate: the frame rate stays the screen's (60, 120, 144 Hz). Cap it from above (`maxDt`) before feeding the ticker, so a hidden tab or a stall does not deliver a `dt` of seconds and send every tween to its end in one frame. Our projects use `1/30`, `0.05` or `0.1`; pick one deliberately.
 
-Springs need more than a cap: a spring survives only steps shorter than `springMaxDt` (stiffness 2000 with `zeta` 1: 0.0185 s). `stepSpring` and `stepSpring3` split a longer step themselves; a stable step runs as one, identical to the raw formula.
+Springs do not need a cap to stay alive: `stepSpring` and `stepSpring3` use the exact solution of the spring equation, so they are stable for any `dt` and give the same path at 30, 60 or 144 frames per second. The usual one-line Euler step (`v += (k·(target − x) − c·v)·dt; x += v·dt`) does neither: stiffness 2000 with `zeta` 1 blows up below ~54 frames per second, and even where it holds the path depends on the frame rate. Do not write that line by hand.
 
 ## How it is built
 

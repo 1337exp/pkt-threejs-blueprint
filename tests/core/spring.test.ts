@@ -1,115 +1,171 @@
 import { describe, expect, it } from 'vitest';
-import { spring, springMaxDt, springVelocity, stepSpring, stepSpring3, type SpringState, type Vec3Like } from '../../src/core/spring';
+import { spring, stepSpring, stepSpring3, type SpringState, type Vec3Like } from '../../src/core/spring';
 
 const v3 = (x = 0, y = 0, z = 0): Vec3Like => ({ x, y, z });
 
-/** Runs the spring from 0 towards 1 on one axis; returns the final position and the largest |position| reached. */
-function run(stiffness: number, zeta: number, dt: number, seconds: number) {
+/** Advance a spring over `seconds` in steps of `dt` (the last step is shortened to land exactly). */
+function run(stiffness: number, zeta: number, dt: number, seconds: number, start: SpringState = { x: 0, v: 0 }, target = 1) {
     const s = spring(stiffness, zeta);
-    const state: SpringState = { x: 0, v: 0 };
-    let peak = 0;
-    for (let i = 0; i < Math.round(seconds / dt); i++) {
-        stepSpring(state, 1, s, dt);
+    const state: SpringState = { ...start };
+    let peak = Math.abs(state.x);
+    let left = seconds;
+    while (left > 1e-12) {
+        const h = Math.min(dt, left);
+        stepSpring(state, target, s, h);
         peak = Math.max(peak, Math.abs(state.x));
+        left -= h;
     }
-    return { x: state.x, peak };
+    return { x: state.x, v: state.v, peak };
 }
 
-/** The same loop with the raw single step (what pkt-cards did): no substeps. */
-function runRaw(stiffness: number, zeta: number, dt: number, seconds: number) {
-    const s = spring(stiffness, zeta);
-    let x = 0;
-    let v = 0;
-    let peak = 0;
-    for (let i = 0; i < Math.round(seconds / dt); i++) {
-        v = springVelocity(x, v, 1, s, dt);
-        x += v * dt;
-        peak = Math.max(peak, Math.abs(x));
+/** An independent reference: classic RK4 with a tiny step. Not the formula under test. */
+function reference(stiffness: number, zeta: number, seconds: number, start: SpringState, target: number) {
+    const k = stiffness;
+    const c = 2 * Math.sqrt(stiffness) * zeta;
+    let x = start.x;
+    let v = start.v;
+    const h = 1e-5;
+    const n = Math.round(seconds / h);
+    const acc = (px: number, pv: number) => -k * (px - target) - c * pv;
+    for (let i = 0; i < n; i++) {
+        const k1x = v;
+        const k1v = acc(x, v);
+        const k2x = v + (h / 2) * k1v;
+        const k2v = acc(x + (h / 2) * k1x, v + (h / 2) * k1v);
+        const k3x = v + (h / 2) * k2v;
+        const k3v = acc(x + (h / 2) * k2x, v + (h / 2) * k2v);
+        const k4x = v + h * k3v;
+        const k4v = acc(x + h * k3x, v + h * k3v);
+        x += (h / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+        v += (h / 6) * (k1v + 2 * k2v + 2 * k3v + k4v);
     }
-    return { x, peak };
+    return { x, v };
 }
 
 describe('spring', () => {
     it('damping is 2·sqrt(stiffness)·zeta', () => {
         expect(spring(400, 0.5)).toEqual({ stiffness: 400, damping: 20 });
     });
-
-    it('springVelocity pulls towards the target and brakes with the velocity', () => {
-        const s = spring(100, 1);
-        expect(springVelocity(0, 0, 1, s, 0.01)).toBeGreaterThan(0);
-        expect(springVelocity(1, 0, 1, s, 0.01)).toBe(0);
-        expect(springVelocity(1, 5, 1, s, 0.01)).toBeLessThan(5);
-    });
 });
 
-describe('springMaxDt', () => {
-    it('stiffness 2000, zeta 1 survives only ~0.0185 s', () => {
-        expect(springMaxDt(spring(2000, 1))).toBeCloseTo(0.01853, 4);
-    });
-
-    it('undamped: 2 / sqrt(stiffness)', () => {
-        expect(springMaxDt(spring(100, 0))).toBeCloseTo(0.2, 10);
-    });
-
-    it('is the real edge: the raw step is stable just below it and blows up just above it', () => {
-        for (const [k, zeta] of [
-            [170, 0.72],
-            [2000, 1],
-            [1500, 0.9],
-            [400, 0.5],
-        ] as const) {
-            const edge = springMaxDt(spring(k, zeta));
-            expect(runRaw(k, zeta, edge * 0.9, 20).peak).toBeLessThan(2);
-            expect(runRaw(k, zeta, edge * 1.1, 20).peak).toBeGreaterThan(1e6);
+describe('stepSpring: the exact solution', () => {
+    // The three regimes (under-, critically, over-damped) against a numerical integration that shares no code with the formula.
+    // Три режима (недо-, критический, пере-) против численного интегрирования, у которого с формулой нет общего кода.
+    it('matches an independent RK4 reference in every regime', () => {
+        for (const k of [40, 170, 2000]) {
+            for (const zeta of [0.3, 0.72, 1, 2.5]) {
+                const start = { x: 0.2, v: -1.5 };
+                const ref = reference(k, zeta, 0.4, start, 1);
+                const got = run(k, zeta, 0.4, 0.4, start);
+                expect(got.x, `x k=${k} zeta=${zeta}`).toBeCloseTo(ref.x, 6);
+                expect(got.v, `v k=${k} zeta=${zeta}`).toBeCloseTo(ref.v, 4);
+            }
         }
     });
-});
 
-describe('stepSpring', () => {
-    it('a stable step is exactly the raw step (no change to a tuned feel)', () => {
-        const s = spring(170, 0.72);
-        const state: SpringState = { x: 0.3, v: 0.2 };
-        let v = 0.2;
-        let x = 0.3;
-        v = springVelocity(x, v, 1, s, 1 / 60);
-        x += v / 60;
-        stepSpring(state, 1, s, 1 / 60);
-        expect(state.x).toBe(x);
-        expect(state.v).toBe(v);
-    });
-
-    // What pkt-cards does today: stiffness 2000 (its default) with zeta 1 under the frame cap 1/30. Raw, it explodes.
-    // Что сегодня делает pkt-cards: жёсткость 2000 (его значение по умолчанию) и zeta 1 под потолком кадра 1/30. Сырой шаг разлетается.
-    it('stiffness 2000, zeta 1, dt 1/30: the raw step explodes, stepSpring settles', () => {
-        expect(runRaw(2000, 1, 1 / 30, 2).peak).toBeGreaterThan(1e6);
-        const { x, peak } = run(2000, 1, 1 / 30, 2);
-        expect(x).toBeCloseTo(1, 3);
-        expect(peak).toBeLessThan(1.01);
-    });
-
-    it('settles for a grid of stiffness, damping and frame deltas, up to a dt of 0.1 s', () => {
-        // 20000 is ten times the stiffest spring we use. Past ~64 substeps per call a spring is stiffer than any frame can follow.
-        for (const k of [40, 170, 800, 2000, 20000]) {
-            for (const zeta of [0.3, 0.7, 1, 2]) {
-                for (const dt of [1 / 120, 1 / 60, 1 / 30, 0.1]) {
-                    const { x } = run(k, zeta, dt, 12);
-                    expect(Number.isFinite(x), `k=${k} zeta=${zeta} dt=${dt}`).toBe(true);
-                    expect(Math.abs(x - 1), `k=${k} zeta=${zeta} dt=${dt}`).toBeLessThan(0.02);
+    it('does not depend on the frame rate: one long step equals many short ones', () => {
+        for (const k of [170, 1500, 2000]) {
+            for (const zeta of [0.5, 0.9, 1, 2]) {
+                const start = { x: -0.4, v: 3 };
+                const whole = run(k, zeta, 1, 1, start);
+                for (const dt of [1 / 144, 1 / 60, 1 / 30, 0.1]) {
+                    const parts = run(k, zeta, dt, 1, start);
+                    expect(parts.x, `x k=${k} zeta=${zeta} dt=${dt}`).toBeCloseTo(whole.x, 9);
+                    expect(parts.v, `v k=${k} zeta=${zeta} dt=${dt}`).toBeCloseTo(whole.v, 7);
                 }
             }
         }
     });
+
+    it('is stable for any step, however long, and settles at the target', () => {
+        for (const k of [1, 170, 2000, 100000]) {
+            for (const zeta of [0, 0.3, 1, 3, 50]) {
+                for (const dt of [1e-4, 1 / 144, 1 / 30, 0.1, 1, 60, 1e5]) {
+                    const state: SpringState = { x: 5, v: -40 };
+                    const s = spring(k, zeta);
+                    for (let i = 0; i < 4; i++) stepSpring(state, 1, s, dt);
+                    expect(Number.isFinite(state.x) && Number.isFinite(state.v), `k=${k} zeta=${zeta} dt=${dt}`).toBe(true);
+                    // The energy never grows (the offset and the velocity stay in a sane bound).
+                    // Энергия не растёт (смещение и скорость остаются в разумных пределах).
+                    expect(Math.abs(state.x), `k=${k} zeta=${zeta} dt=${dt}`).toBeLessThan(200);
+                }
+                if (zeta > 0) {
+                    const state: SpringState = { x: 5, v: -40 };
+                    stepSpring(state, 1, spring(k, zeta), 1e5);
+                    expect(state.x, `k=${k} zeta=${zeta}`).toBeCloseTo(1, 6);
+                    expect(state.v, `k=${k} zeta=${zeta}`).toBeCloseTo(0, 6);
+                }
+            }
+        }
+    });
+
+    it('is continuous through critical damping (no jump at zeta = 1)', () => {
+        const at = (zeta: number) => run(2000, zeta, 1 / 60, 0.2, { x: 0, v: 0 });
+        const exact = at(1);
+        for (const zeta of [1 - 1e-7, 1 + 1e-7, 1 - 1e-4, 1 + 1e-4]) {
+            expect(at(zeta).x, `zeta=${zeta}`).toBeCloseTo(exact.x, 3);
+            expect(at(zeta).v, `zeta=${zeta}`).toBeCloseTo(exact.v, 1);
+        }
+    });
+
+    it('stays put at the target, and a no-op step changes nothing', () => {
+        const s = spring(2000, 1);
+        const state: SpringState = { x: 1, v: 0 };
+        stepSpring(state, 1, s, 1 / 60);
+        expect(state).toEqual({ x: 1, v: 0 });
+        const moving: SpringState = { x: 0.3, v: 0.2 };
+        for (const dt of [0, -1, Number.NaN]) {
+            stepSpring(moving, 1, s, dt);
+            expect(moving).toEqual({ x: 0.3, v: 0.2 });
+        }
+    });
+
+    it('a spring without stiffness is free flight (with or without braking)', () => {
+        const free: SpringState = { x: 0, v: 3 };
+        stepSpring(free, 100, { stiffness: 0, damping: 0 }, 0.5);
+        expect(free.x).toBeCloseTo(1.5, 12);
+        expect(free.v).toBeCloseTo(3, 12);
+        const braked: SpringState = { x: 0, v: 3 };
+        stepSpring(braked, 100, { stiffness: 0, damping: 2 }, 0.5);
+        expect(braked.v).toBeCloseTo(3 * Math.exp(-1), 12);
+        expect(braked.x).toBeCloseTo((3 * (1 - Math.exp(-1))) / 2, 12);
+    });
+
+    it('zeta < 1 overshoots, zeta = 1 does not (noticeably)', () => {
+        expect(run(300, 0.4, 1 / 60, 3).peak).toBeGreaterThan(1.1);
+        expect(run(300, 1, 1 / 60, 3).peak).toBeLessThan(1.001);
+    });
+
+    // What pkt-cards runs: stiffness 2000, zeta 1 under a frame cap. It used to explode below ~54 frames per second.
+    // Что гоняет pkt-cards: жёсткость 2000, zeta 1 под потолком кадра. Раньше она разлеталась ниже ~54 кадров в секунду.
+    it('stiffness 2000, zeta 1: 30, 60 and 144 fps give the same path', () => {
+        const at = (dt: number) => run(2000, 1, dt, 0.1, { x: 0, v: 0 });
+        const base = at(1 / 144);
+        for (const dt of [1 / 60, 1 / 30]) {
+            expect(at(dt).x).toBeCloseTo(base.x, 9);
+        }
+        expect(run(2000, 1, 1 / 30, 2).x).toBeCloseTo(1, 6);
+    });
 });
 
 describe('stepSpring3', () => {
-    it('moves all three axes independently and in place', () => {
+    it('does the same as stepSpring on each axis, in place', () => {
         const s = spring(200, 0.8);
-        const pos = v3();
-        const vel = v3();
-        stepSpring3(pos, vel, v3(1, -2, 0), s, 1 / 60);
-        expect(pos.x).toBeGreaterThan(0);
-        expect(pos.y).toBeLessThan(0);
-        expect(pos.z).toBe(0);
+        const pos = v3(0.1, -0.2, 0.3);
+        const vel = v3(1, -2, 0.5);
+        const target = v3(1, -2, 0);
+        const axes = [
+            { x: 0.1, v: 1, t: 1 },
+            { x: -0.2, v: -2, t: -2 },
+            { x: 0.3, v: 0.5, t: 0 },
+        ].map(({ x, v, t }) => {
+            const state: SpringState = { x, v };
+            stepSpring(state, t, s, 1 / 60);
+            return state;
+        });
+        stepSpring3(pos, vel, target, s, 1 / 60);
+        expect([pos.x, pos.y, pos.z]).toEqual(axes.map((a) => a.x));
+        expect([vel.x, vel.y, vel.z]).toEqual(axes.map((a) => a.v));
     });
 
     it('arrives at the target even on a long frame', () => {
@@ -117,13 +173,16 @@ describe('stepSpring3', () => {
         const pos = v3();
         const vel = v3();
         for (let i = 0; i < 60; i++) stepSpring3(pos, vel, v3(1, 2, 3), s, 1 / 30);
-        expect(pos.x).toBeCloseTo(1, 3);
-        expect(pos.y).toBeCloseTo(2, 3);
-        expect(pos.z).toBeCloseTo(3, 3);
+        expect(pos.x).toBeCloseTo(1, 6);
+        expect(pos.y).toBeCloseTo(2, 6);
+        expect(pos.z).toBeCloseTo(3, 6);
     });
 
-    it('zeta < 1 overshoots, zeta = 1 does not (noticeably)', () => {
-        expect(run(300, 0.4, 1 / 120, 3).peak).toBeGreaterThan(1.1);
-        expect(run(300, 1, 1 / 120, 3).peak).toBeLessThan(1.01);
+    it('a no-op step changes nothing', () => {
+        const pos = v3(1, 2, 3);
+        const vel = v3(4, 5, 6);
+        stepSpring3(pos, vel, v3(), spring(100, 1), 0);
+        expect(pos).toEqual(v3(1, 2, 3));
+        expect(vel).toEqual(v3(4, 5, 6));
     });
 });

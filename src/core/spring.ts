@@ -31,67 +31,88 @@ export function spring(stiffness: number, zeta: number): Spring {
 }
 
 /**
- * The longest step (seconds) a spring survives. Semi-implicit Euler is stable while `damping·dt < 2` and
- * `stiffness·dt² + 2·damping·dt < 4`, which is `dt < 4 / (sqrt(damping² + 4·stiffness) + damping)`. Past it the motion blows up:
- * stiffness 2000 with `zeta` 1 survives only 0.0185 s, so a frame cap of 1/30 is not enough. `stepSpring` and `stepSpring3`
- * split a longer step by themselves; use this when you integrate with {@link springVelocity} yourself.
- * Самый длинный шаг (в секундах), который пружина переживает. Полунеявный Эйлер устойчив, пока `damping·dt < 2` и
- * `stiffness·dt² + 2·damping·dt < 4`, то есть `dt < 4 / (sqrt(damping² + 4·stiffness) + damping)`. За границей движение разлетается:
- * жёсткость 2000 при `zeta` 1 переживает только 0,0185 с, так что потолка кадра 1/30 мало. `stepSpring` и `stepSpring3`
- * сами делят длинный шаг; эта функция нужна, если ты интегрируешь сам через {@link springVelocity}.
+ * The spring's step as a matrix: over `dt` the offset `y = x - target` and the velocity `v` become
+ * `y' = a·y + b·v`, `v' = c·y + d·v`. These are the exact solutions of `x'' = -stiffness·y - damping·x'`
+ * (a matrix exponential), so the step is stable for any `dt` and splitting it into several steps changes nothing.
+ * The three cases are by the sign of `damping² - 4·stiffness`: under- (cos, sin), critically and over-damped.
+ * Шаг пружины в виде матрицы: за `dt` смещение `y = x - target` и скорость `v` становятся
+ * `y' = a·y + b·v`, `v' = c·y + d·v`. Это точные решения `x'' = -stiffness·y - damping·x'` (матричная экспонента),
+ * поэтому шаг устойчив при любом `dt`, а деление его на несколько шагов ничего не меняет.
+ * Три случая по знаку `damping² - 4·stiffness`: недодемпфированный (cos, sin), критический и передемпфированный.
  */
-export function springMaxDt(s: Spring): number {
-    return 4 / (Math.sqrt(s.damping * s.damping + 4 * s.stiffness) + s.damping);
+const m = { a: 1, b: 0, c: 0, d: 1 };
+
+function transition(s: Spring, dt: number): void {
+    const k = s.stiffness;
+    const alpha = s.damping / 2;
+    const disc = alpha * alpha - k;
+    // Relative tolerance: closer than this to critical, the critical formula is exact to well below a pixel.
+    // Относительный допуск: ближе этого к критическому критическая формула точна с запасом до долей пикселя.
+    const eps = 1e-9 * (alpha * alpha + k);
+
+    if (Math.abs(disc) <= eps) {
+        const e = Math.exp(-alpha * dt);
+        m.a = e * (1 + alpha * dt);
+        m.b = e * dt;
+        m.c = -e * alpha * alpha * dt;
+        m.d = e * (1 - alpha * dt);
+    } else if (disc < 0) {
+        const w = Math.sqrt(-disc);
+        const e = Math.exp(-alpha * dt);
+        const cs = Math.cos(w * dt);
+        const sn = Math.sin(w * dt);
+        m.a = e * (cs + (alpha / w) * sn);
+        m.b = (e * sn) / w;
+        m.c = -((e * k) / w) * sn;
+        m.d = e * (cs - (alpha / w) * sn);
+    } else {
+        // e·cosh and e·sinh written through the two decaying exponentials: no overflow on a long step.
+        // e·cosh и e·sinh через две затухающие экспоненты: без переполнения на длинном шаге.
+        const r = Math.sqrt(disc);
+        const e1 = Math.exp(-(alpha - r) * dt);
+        const e2 = Math.exp(-(alpha + r) * dt);
+        const ch = (e1 + e2) / 2;
+        const sh = (e1 - e2) / 2;
+        m.a = ch + (alpha / r) * sh;
+        m.b = sh / r;
+        m.c = -(k / r) * sh;
+        m.d = ch - (alpha / r) * sh;
+    }
 }
 
 /**
- * A cap on substeps per call, so a silly spring cannot hang a frame. Needing more means the spring is stiffer than any
- * frame can follow (stiffness 100000 at a 0.1 s frame): lower the stiffness or the frame cap.
- * Потолок подшагов за вызов, чтобы нелепая пружина не подвесила кадр. Если нужно больше, пружина жёстче, чем способен
- * догнать любой кадр (жёсткость 100000 на кадре 0,1 с): снизь жёсткость или потолок кадра.
- */
-const MAX_SUBSTEPS = 64;
-
-const substeps = (s: Spring, dt: number): number => Math.min(MAX_SUBSTEPS, Math.max(1, Math.ceil(dt / springMaxDt(s))));
-
-/**
- * One raw step for a number: returns the new velocity, move the value yourself (`x += v * dt`). No substeps: keep `dt`
- * below {@link springMaxDt}, or use {@link stepSpring}.
- * Один сырой шаг для числа: возвращает новую скорость, значение двигай сам (`x += v * dt`). Без подшагов: держи `dt`
- * меньше {@link springMaxDt} или бери {@link stepSpring}.
- */
-export function springVelocity(x: number, v: number, target: number, s: Spring, dt: number): number {
-    return v + (s.stiffness * (target - x) - s.damping * v) * dt;
-}
-
-/**
- * One step for a number, in place. A step longer than {@link springMaxDt} is split into equal substeps; a step that is
- * already stable runs as one, exactly like {@link springVelocity} followed by `x += v * dt`.
- * Шаг для числа на месте. Шаг длиннее {@link springMaxDt} делится на равные подшаги; уже устойчивый шаг идёт одним,
- * ровно как {@link springVelocity} и затем `x += v * dt`.
+ * One step for a number, in place. Exact for a fixed target and stable for any `dt`: the same time gives the same
+ * result at 30, 60 or 144 frames per second. A target that moves is sampled once per step, as in any per-frame code.
+ * Шаг для числа на месте. Точен при неподвижной цели и устойчив при любом `dt`: одно и то же время даёт один и тот же
+ * результат на 30, 60 или 144 кадрах в секунду. Движущаяся цель берётся раз за шаг, как в любом покадровом коде.
  */
 export function stepSpring(state: SpringState, target: number, s: Spring, dt: number): void {
-    const n = substeps(s, dt);
-    const h = dt / n;
-    for (let i = 0; i < n; i++) {
-        state.v = springVelocity(state.x, state.v, target, s, h);
-        state.x += state.v * h;
-    }
+    if (!(dt > 0)) return;
+    transition(s, dt);
+    const y = state.x - target;
+    const v = state.v;
+    state.x = target + m.a * y + m.b * v;
+    state.v = m.c * y + m.d * v;
 }
 
 /**
- * One step for a vector: changes `pos` and `vel` in place. Substeps like {@link stepSpring}.
- * Шаг для вектора: меняет `pos` и `vel` на месте. Подшаги, как у {@link stepSpring}.
+ * One step for a vector: changes `pos` and `vel` in place. Same guarantees as {@link stepSpring}.
+ * Шаг для вектора: меняет `pos` и `vel` на месте. Те же гарантии, что у {@link stepSpring}.
  */
 export function stepSpring3(pos: Vec3Like, vel: Vec3Like, target: Vec3Like, s: Spring, dt: number): void {
-    const n = substeps(s, dt);
-    const h = dt / n;
-    for (let i = 0; i < n; i++) {
-        vel.x = springVelocity(pos.x, vel.x, target.x, s, h);
-        vel.y = springVelocity(pos.y, vel.y, target.y, s, h);
-        vel.z = springVelocity(pos.z, vel.z, target.z, s, h);
-        pos.x += vel.x * h;
-        pos.y += vel.y * h;
-        pos.z += vel.z * h;
-    }
+    if (!(dt > 0)) return;
+    transition(s, dt);
+    const { a, b, c, d } = m;
+    const yx = pos.x - target.x;
+    const yy = pos.y - target.y;
+    const yz = pos.z - target.z;
+    const vx = vel.x;
+    const vy = vel.y;
+    const vz = vel.z;
+    pos.x = target.x + a * yx + b * vx;
+    pos.y = target.y + a * yy + b * vy;
+    pos.z = target.z + a * yz + b * vz;
+    vel.x = c * yx + d * vx;
+    vel.y = c * yy + d * vy;
+    vel.z = c * yz + d * vz;
 }
