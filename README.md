@@ -26,6 +26,10 @@ Each module is its own import (`pkt-threejs-blueprint/<module>`), there is no ro
 | `spring` | `spring(stiffness, zeta)`, `stepSpring` (a number) and `stepSpring3` (a vector): the exact solution, stable at any step, the same path at any frame rate |
 | `rng` | `mulberry32(seed)`, `randomInt`; the sequence is frozen by a test, saved seeds stay valid |
 | `tuning` | `createTuning(values, { groups, storageKey })`: live values, saving only the differences from the defaults, reset, "copy as code" (`toSource`), safe `localStorage` |
+| `loop` | `startLoop(frame, { maxDt })`: the frame loop; `frame(dt, now)` gets a delta capped at `maxDt` (required: you choose it); `stop()` |
+| `renderer` | needs `three`. `createRenderer(container)`, `bindResize(renderer, container, onResize)`: size and a pixel ratio capped at 2, read again on every resize |
+| `pointer` | needs `three`. `clientToNdc(event, element)`, `rayOnPlane(ndc, camera, plane)`: a pointer to the point on a plane, with the camera matrix refreshed |
+| `dispose` | needs `three`. `disposeObject(root, { textures })`: geometries and materials (arrays too) freed once however many meshes share them; textures only when asked |
 
 ```ts
 import { Ticker } from 'pkt-threejs-blueprint/ticker';
@@ -48,7 +52,7 @@ Three layers by dependency: `core/` (nothing), `three/` (needs `three`), `compon
 
 ## Not yet
 
-`three/` (renderer helpers, pointer to NDC, `dispose`), `components/` (a Vue panel and a plain-DOM panel over `tuning`). Particles, ribbons, cameras, bloom and shaders stay in the games on purpose: they differ because the pictures differ.
+`components/` (a Vue panel and a plain-DOM panel over `tuning`). Particles, ribbons, cameras, bloom and shaders stay in the games on purpose: they differ because the pictures differ.
 
 ## License
 

@@ -38,6 +38,22 @@
       "types": "./dist/core/tuning.d.ts",
       "import": "./dist/core/tuning.js"
     },
+    "./loop": {
+      "types": "./dist/core/loop.d.ts",
+      "import": "./dist/core/loop.js"
+    },
+    "./renderer": {
+      "types": "./dist/three/renderer.d.ts",
+      "import": "./dist/three/renderer.js"
+    },
+    "./pointer": {
+      "types": "./dist/three/pointer.d.ts",
+      "import": "./dist/three/pointer.js"
+    },
+    "./dispose": {
+      "types": "./dist/three/dispose.d.ts",
+      "import": "./dist/three/dispose.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -57,6 +73,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
+    "@types/three": "^0.187.0",
+    "three": "^0.187.0",
     "typescript": "~6.0.3",
     "vitest": "^5.0.3"
   },

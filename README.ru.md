@@ -26,6 +26,10 @@ npm run build
 | `spring` | `spring(stiffness, zeta)`, `stepSpring` (число) и `stepSpring3` (вектор): точное решение, устойчиво при любом шаге, один и тот же путь на любой частоте кадров |
 | `rng` | `mulberry32(seed)`, `randomInt`; последовательность заморожена тестом, сохранённые зёрна остаются верными |
 | `tuning` | `createTuning(values, { groups, storageKey })`: живые значения, сохранение только отличий от умолчаний, сброс, «скопировать как код» (`toSource`), безопасный `localStorage` |
+| `loop` | `startLoop(frame, { maxDt })`: цикл кадров; `frame(dt, now)` получает дельту не больше `maxDt` (параметр обязателен: выбираешь ты); `stop()` |
+| `renderer` | нужен `three`. `createRenderer(container)`, `bindResize(renderer, container, onResize)`: размер и плотность пикселей с потолком 2, читаются заново при каждом изменении размера |
+| `pointer` | нужен `three`. `clientToNdc(event, element)`, `rayOnPlane(ndc, camera, plane)`: от указателя до точки на плоскости, с обновлением матрицы камеры |
+| `dispose` | нужен `three`. `disposeObject(root, { textures })`: геометрии и материалы (и массивы) освобождаются один раз, сколько бы мешей их ни делило; текстуры только по просьбе |
 
 ```ts
 import { Ticker } from 'pkt-threejs-blueprint/ticker';
@@ -48,7 +52,7 @@ await ticker.tween(0.4, (k) => (mesh.scale.x = 1 + k), easeOutBack);
 
 ## Пока нет
 
-`three/` (помощники рендерера, указатель в NDC, `dispose`), `components/` (панель на Vue и панель на чистом DOM поверх `tuning`). Частицы, ленты, камеры, bloom и шейдеры остаются в играх намеренно: они разные, потому что разные картинки.
+`components/` (панель на Vue и панель на чистом DOM поверх `tuning`). Частицы, ленты, камеры, bloom и шейдеры остаются в играх намеренно: они разные, потому что разные картинки.
 
 ## Лицензия
 
