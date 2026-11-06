@@ -54,6 +54,10 @@
       "types": "./dist/three/dispose.d.ts",
       "import": "./dist/three/dispose.js"
     },
+    "./vue/tuning-panel": {
+      "types": "./dist/components/vue/tuning-panel.d.ts",
+      "import": "./dist/components/vue/tuning-panel.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
@@ -64,19 +68,25 @@
     "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "peerDependencies": {
-    "three": ">=0.186.1 <0.188.0"
+    "three": ">=0.186.1 <0.188.0",
+    "vue": "^3.5.0"
   },
   "peerDependenciesMeta": {
     "three": {
+      "optional": true
+    },
+    "vue": {
       "optional": true
     }
   },
   "devDependencies": {
     "@types/node": "^26.6.4",
     "@types/three": "^0.187.0",
+    "happy-dom": "^21.0.4",
     "three": "^0.187.0",
     "typescript": "~6.0.3",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "vue": "^3.5.45"
   },
   "author": "1337exp",
   "engines": {

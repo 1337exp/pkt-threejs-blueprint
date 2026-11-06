@@ -29,6 +29,7 @@ Each module is its own import (`pkt-threejs-blueprint/<module>`), there is no ro
 | `loop` | `startLoop(frame, { maxDt })`: the frame loop; `frame(dt, now)` gets a delta capped at `maxDt` (required: you choose it); `stop()` |
 | `renderer` | needs `three`. `createRenderer(container)`, `bindResize(renderer, container, onResize)`: size and a pixel ratio capped at 2, read again on every resize |
 | `pointer` | needs `three`. `clientToNdc(event, element)`, `rayOnPlane(ndc, camera, plane)`: a pointer to the point on a plane, with the camera matrix refreshed |
+| `vue/tuning-panel` | needs `vue`. `TuningPanel`: draws a `tuning` (groups of sliders, what differs from the defaults, Copy as code, Reset). No `.vue` file, no UI library; looks are `--tbp-*` CSS variables with our dark-theme values as fallbacks |
 | `dispose` | needs `three`. `disposeObject(root, { textures })`: geometries and materials (arrays too) freed once however many meshes share them; textures only when asked |
 
 ```ts
@@ -52,7 +53,7 @@ Three layers by dependency: `core/` (nothing), `three/` (needs `three`), `compon
 
 ## Not yet
 
-`components/` (a Vue panel and a plain-DOM panel over `tuning`). Particles, ribbons, cameras, bloom and shaders stay in the games on purpose: they differ because the pictures differ.
+A plain-DOM panel over `tuning` (the Vue one is done). Particles, ribbons, cameras, bloom and shaders stay in the games on purpose: they differ because the pictures differ.
 
 ## License
 
