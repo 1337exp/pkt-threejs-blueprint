@@ -1,6 +1,6 @@
 {
   "name": "@1337exp/pkt-threejs-blueprint",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The small shared layer our Three.js prototypes keep rewriting: game clock and tweens, springs, seeded random, live-tuning core. Import only what you need.",
   "keywords": [
     "threejs",

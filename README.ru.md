@@ -33,7 +33,7 @@ npm run build
 | `rng` | `mulberry32(seed)`, `randomInt`; последовательность заморожена тестом, сохранённые зёрна остаются верными |
 | `tuning` | `createTuning(values, { groups, storageKey })`: живые значения, сохранение только отличий от умолчаний, сброс, «скопировать как код» (`toSource`), безопасный `localStorage` |
 | `loop` | `startLoop(frame, { maxDt })`: цикл кадров; `frame(dt, now)` получает дельту не больше `maxDt` (параметр обязателен: выбираешь ты); `stop()` |
-| `renderer` | нужен `three`. `createRenderer(container)`, `bindResize(renderer, container, onResize)`: размер и плотность пикселей с потолком 2, читаются заново при каждом изменении размера |
+| `renderer` | нужен `three`. `createRenderer(container, parameters, { touchAction })` (холст с `touch-action: none`, пока не передашь `pan-y` и подобное), `bindResize(renderer, container, onResize)`: размер и плотность пикселей с потолком 2, читаются заново при каждом изменении размера |
 | `pointer` | нужен `three`. `clientToNdc(event, element)`, `rayOnPlane(ndc, camera, plane)`: от указателя до точки на плоскости, с обновлением матрицы камеры |
 | `vue/tuning-panel` | нужен `vue`. `TuningPanel`: рисует `tuning` (группы ползунков, что отличается от умолчаний, «скопировать как код», сброс). Без `.vue`-файла и без UI-библиотеки; вид задают CSS-переменные `--tbp-*`, запасные значения это наша тёмная тема |
 | `dispose` | нужен `three`. `disposeObject(root, { textures })`: геометрии и материалы (и массивы) освобождаются один раз, сколько бы мешей их ни делило; текстуры только по просьбе |

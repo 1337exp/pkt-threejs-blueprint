@@ -33,7 +33,7 @@ Each module is its own import (`@1337exp/pkt-threejs-blueprint/<module>`), there
 | `rng` | `mulberry32(seed)`, `randomInt`; the sequence is frozen by a test, saved seeds stay valid |
 | `tuning` | `createTuning(values, { groups, storageKey })`: live values, saving only the differences from the defaults, reset, "copy as code" (`toSource`), safe `localStorage` |
 | `loop` | `startLoop(frame, { maxDt })`: the frame loop; `frame(dt, now)` gets a delta capped at `maxDt` (required: you choose it); `stop()` |
-| `renderer` | needs `three`. `createRenderer(container)`, `bindResize(renderer, container, onResize)`: size and a pixel ratio capped at 2, read again on every resize |
+| `renderer` | needs `three`. `createRenderer(container, parameters, { touchAction })` (the canvas is `touch-action: none` unless you pass `pan-y` and the like), `bindResize(renderer, container, onResize)`: size and a pixel ratio capped at 2, read again on every resize |
 | `pointer` | needs `three`. `clientToNdc(event, element)`, `rayOnPlane(ndc, camera, plane)`: a pointer to the point on a plane, with the camera matrix refreshed |
 | `vue/tuning-panel` | needs `vue`. `TuningPanel`: draws a `tuning` (groups of sliders, what differs from the defaults, Copy as code, Reset). No `.vue` file, no UI library; looks are `--tbp-*` CSS variables with our dark-theme values as fallbacks |
 | `dispose` | needs `three`. `disposeObject(root, { textures })`: geometries and materials (arrays too) freed once however many meshes share them; textures only when asked |

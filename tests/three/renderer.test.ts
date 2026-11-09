@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { bindResize } from '../../src/three/renderer';
+import { bindResize, styleCanvas } from '../../src/three/renderer';
 
 /** A hand-driven ResizeObserver: `fire` delivers a change. */
 class FakeObserver {
@@ -112,5 +112,27 @@ describe('bindResize', () => {
         expect(FakeObserver.last!.observed).toEqual([el]);
         stop();
         expect(FakeObserver.last!.disconnected).toBe(true);
+    });
+});
+
+describe('styleCanvas', () => {
+    const canvas = () => ({ style: { display: '', touchAction: '' } });
+
+    it('makes the canvas a block and keeps a finger drag for the game by default', () => {
+        const c = canvas();
+        styleCanvas(c);
+        expect(c.style).toEqual({ display: 'block', touchAction: 'none' });
+    });
+
+    it('takes the touch-action that the scene asks for, so a finger can still scroll the page', () => {
+        const c = canvas();
+        styleCanvas(c, { touchAction: 'pan-y' });
+        expect(c.style).toEqual({ display: 'block', touchAction: 'pan-y' });
+    });
+
+    it('uses none for an options object that has no touchAction', () => {
+        const c = canvas();
+        styleCanvas(c, {});
+        expect(c.style.touchAction).toBe('none');
     });
 });

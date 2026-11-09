@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- **`renderer`**: `createRenderer(container, parameters, options)` takes `options.touchAction` (default `none`, as before). A scene with no gesture of its own, such as a table you only tap, passes `pan-y`, so a finger moving along the page still scrolls it. The canvas style is now set by the small `styleCanvas`, which is tested without WebGL. Found in hexa-proof, where a finger on the table could not scroll the page.
+
 ## 0.1.0
 
 First release. Each module is its own import (`@1337exp/pkt-threejs-blueprint/<module>`), there is no root entry.
